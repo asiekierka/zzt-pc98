@@ -1,8 +1,7 @@
 {
-	Copyright (c) 2020 Adrian Siekierka
+	PC98 key testing program
 
-	Based on a reconstruction of code from ZZT,
-	Copyright 1991 Epic MegaGames, used with permission.
+	Copyright (c) 2020 Adrian Siekierka
 
 	Permission is hereby granted, free of charge, to any person obtaining a copy
 	of this software and associated documentation files (the "Software"), to deal
@@ -23,34 +22,44 @@
 	SOFTWARE.
 }
 
-unit Keys;
+program KeyTest;
 
-interface
-	var
-		KeysRightShiftHeld: Boolean;
-		KeysLeftShiftHeld: Boolean;
-		KeysShiftHeld: Boolean;
-		KeysCtrlHeld: Boolean;
-		KeysAltHeld: Boolean;
-		KeysNumLockHeld: Boolean;
-	procedure KeysUpdateModifiers;
-
-implementation
 uses Dos;
 
-procedure KeysUpdateModifiers;
+function KeyPressed: boolean;
 	var
 		regs: Registers;
 	begin
-		regs.AH := $02;
+		regs.AH := $01;
 		Intr($18, regs);
-		KeysRightShiftHeld := false;
-		KeysLeftShiftHeld := (regs.AL and 1) <> 0;
-		KeysCtrlHeld := (regs.AL and 16) <> 0;
-		KeysAltHeld := false;
-		KeysNumLockHeld := false;
-		KeysShiftHeld := KeysRightShiftHeld or KeysLeftShiftHeld;
+{		KeyPressed := (regs.Flags and $02) <> 0; }
+		KeyPressed := regs.BH <> 0;
 	end;
 
+function ReadKey: char;
+	var
+		regs: Registers;
+	begin
+		regs.AH := $00;
+		Intr($18, regs);
+		if (regs.AL <= $02) and (regs.AH <= $80) then
+			ReadKey := Chr(regs.AH or $80)
+		else
+			ReadKey := Chr(regs.AL);
+	end;
+
+var
+	c: char;
+	running: boolean;
 begin
+	running := true;
+	while running do begin
+		if KeyPressed then begin
+			c := ReadKey;
+			if c = #13 then
+				running := false
+			else
+				Writeln('Read character ', Ord(c));
+		end;
+	end;
 end.

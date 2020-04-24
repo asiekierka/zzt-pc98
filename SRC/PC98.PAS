@@ -1,9 +1,6 @@
 {
 	Copyright (c) 2020 Adrian Siekierka
 
-	Based on a reconstruction of code from ZZT,
-	Copyright 1991 Epic MegaGames, used with permission.
-
 	Permission is hereby granted, free of charge, to any person obtaining a copy
 	of this software and associated documentation files (the "Software"), to deal
 	in the Software without restriction, including without limitation the rights
@@ -23,34 +20,46 @@
 	SOFTWARE.
 }
 
-unit Keys;
+{$I-}
+unit PC98;
 
 interface
-	var
-		KeysRightShiftHeld: Boolean;
-		KeysLeftShiftHeld: Boolean;
-		KeysShiftHeld: Boolean;
-		KeysCtrlHeld: Boolean;
-		KeysAltHeld: Boolean;
-		KeysNumLockHeld: Boolean;
-	procedure KeysUpdateModifiers;
+	procedure Delay(ms: integer);
 
 implementation
-uses Dos;
+uses Dos, FONT;
 
-procedure KeysUpdateModifiers;
+procedure Delay(ms: integer);
 	var
+		i, j: integer;
+	begin
+		{ TODO: something sensible }
+		for i := 0 to ms do
+			for j := 0 to 300 do
+				Port[$5F] := $00;
+	end;
+
+procedure LoadFontData;
+	var
+		chr: array[0 .. 33] of byte;
+		cPtr: pointer;
+		i, j: integer;
 		regs: Registers;
 	begin
-		regs.AH := $02;
-		Intr($18, regs);
-		KeysRightShiftHeld := false;
-		KeysLeftShiftHeld := (regs.AL and 1) <> 0;
-		KeysCtrlHeld := (regs.AL and 16) <> 0;
-		KeysAltHeld := false;
-		KeysNumLockHeld := false;
-		KeysShiftHeld := KeysRightShiftHeld or KeysLeftShiftHeld;
+		cPtr := Ptr(Seg(chr), Ofs(chr) + 2);
+		for i := 0 to (FONTBINSize shr 4) do begin
+			for j := 0 to 15 do begin
+				chr[(j shl 1) + 2] := FONTBINData[(i shl 4) or j];
+				chr[(j shl 1) + 3] := FONTBINData[(i shl 4) or j];
+			end;
+			regs.AH := $1A;
+			regs.BX := Seg(chr);
+			regs.CX := Ofs(chr);
+			regs.DX := ($7601 + ((i and $7E) shr 1)) + ((i and $01) shl 8);
+			Intr($18, regs);
+		end;
 	end;
 
 begin
+	LoadFontData;
 end.

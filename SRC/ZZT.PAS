@@ -26,7 +26,7 @@
 {$I-}
 {$M 49152,163840,655360}
 program ZZT;
-uses Crt, Dos, Video, Keys, Sounds, Input, TxtWind, GameVars, Elements, Editor, Oop, Game;
+uses Dos, Video, Keys, Sounds, Input, TxtWind, GameVars, Elements, Editor, Oop, Game;
 
 procedure ParseArguments;
 	var
@@ -37,10 +37,6 @@ procedure ParseArguments;
 			pArg := ParamStr(i);
 			if pArg[1] = '/' then begin
 				case UpCase(pArg[2]) of
-					'T': begin
-						SoundTimeCheckCounter := 0;
-						UseSystemTimeForElapsed := false;
-					end;
 					'R': ResetConfig := true;
 				end;
 			end else begin
@@ -55,7 +51,6 @@ procedure ParseArguments;
 procedure GameConfigure;
 	var
 		unk1: integer;
-		joystickEnabled, mouseEnabled: boolean;
 		cfgFile: text;
 	begin
 		ParsingConfigFile := true;
@@ -77,14 +72,13 @@ procedure GameConfigure;
 		if Length(ConfigWorldFile) <> 0 then begin
 			StartupWorldFileName := ConfigWorldFile;
 		end;
+		Close(cfgFile);
 
 		InputInitDevices;
-		joystickEnabled := InputJoystickEnabled;
-		mouseEnabled := InputMouseEnabled;
 
 		ParsingConfigFile := false;
 
-		Window(1, 1, 80, 25);
+{		Window(1, 1, 80, 25);
 		TextBackground(Black);
 		ClrScr;
 		TextColor(White);
@@ -115,16 +109,19 @@ procedure GameConfigure;
 		TextColor(Yellow);
 		TextBackground(Black);
 		ClrScr;
-		TextColor(Yellow);
+		TextColor(Yellow); }
 		if not InputConfigure then
 			GameTitleExitRequested := true
 		else begin
-			TextColor(LightGreen);
+			{ TextColor(LightGreen); }
 			if not VideoConfigure then
 				GameTitleExitRequested := true;
 		end;
-		Window(1, 1, 80, 25);
+		{ Window(1, 1, 80, 25); }
 	end;
+
+var
+	aaaai: integer;
 
 begin
 	WorldFileDescCount := 7;
@@ -144,8 +141,7 @@ begin
 	WorldFileDescValues[7] := 'TOUR       Guided Tour ZZT'#39's Other Worlds';
 
 	Randomize;
-	SetCBreak(false);
-	InitialTextAttr := TextAttr;
+	{ SetCBreak(false); }
 
 	StartupWorldFileName := 'TOWN';
 	ResourceDataFileName := 'ZZT.DAT';
@@ -155,7 +151,7 @@ begin
 	ParseArguments;
 
 	if not GameTitleExitRequested then begin
-		VideoInstall(80, Blue);
+		VideoInstall(80, 1);
 		OrderPrintId := @GameVersion;
 		TextWindowInit(5, 3, 50, 18);
 		New(IoTmpBuf);
@@ -179,17 +175,6 @@ begin
 	SoundClearQueue;
 
 	VideoUninstall;
-	Port[PORT_CGA_PALETTE] := 0;
-	TextAttr := InitialTextAttr;
 	ClrScr;
-
-	if Length(ConfigRegistration) = 0 then begin
-		GamePrintRegisterMessage;
-	end else begin
-		Writeln;
-		Writeln('  Registered version -- Thank you for playing ZZT.');
-		Writeln;
-	end;
-
 	VideoShowCursor;
 end.

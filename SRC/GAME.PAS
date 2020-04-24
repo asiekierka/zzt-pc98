@@ -84,7 +84,6 @@ interface
 	procedure BoardPassageTeleport(x, y: integer);
 	procedure GameDebugPrompt;
 	procedure GameTitleLoop;
-	procedure GamePrintRegisterMessage;
 const
 	ProgressAnimColors: array[0 .. 7] of byte = ($14, $1C, $15, $1D, $16, $1E, $17, $1F);
 	ProgressAnimStrings: array[0 .. 7] of string[5] =
@@ -107,7 +106,7 @@ const
 	LineChars: string[16] = #249#208#210#186#181#188#187#185#198#200#201#204#205#202#203#206;
 
 implementation
-uses Dos, Crt, Video, Sounds, Input, Elements, Editor, Oop;
+uses Dos, PC98, Video, Sounds, Input, Elements, Editor, Oop;
 
 procedure SidebarClearLine(y: integer);
 	begin
@@ -1683,56 +1682,6 @@ procedure GameTitleLoop;
 				end;
 			until boardChanged or GameTitleExitRequested;
 		until GameTitleExitRequested;
-	end;
-
-procedure GamePrintRegisterMessage;
-	var
-		s: string;
-		f: file;
-		i: integer;
-		ix, iy: integer;
-		color: integer;
-		isReading: boolean;
-		strPtr: pointer;
-	begin
-		SetCBreak(false);
-		s := 'END' + Chr(49 + Random(4)) + '.MSG';
-		iy := 0;
-		color := $0F;
-
-		for i := 1 to ResourceDataHeader.EntryCount do begin
-			if ResourceDataHeader.Name[i] = s then begin
-				Assign(f, ResourceDataFileName);
-				Reset(f, 1);
-				Seek(f, ResourceDataHeader.FileOffset[i]);
-
-				isReading := true;
-				while (IOResult = 0) and isReading do begin
-					BlockRead(f, s, 1);
-					strPtr := Ptr(Seg(s), Ofs(s) + 1);
-					if Length(s) = 0 then begin
-						Dec(color);
-					end else begin
-						BlockRead(f, strPtr^, Length(s));
-						if s <> '@' then
-							VideoWriteText(0, iy, color, s)
-						else
-							isReading := false;
-					end;
-					Inc(iy);
-				end;
-
-				Close(f);
-				VideoWriteText(28, 24, $1F, 'Press any key to exit...');
-				TextColor(LightGray);
-
-				repeat until KeyPressed;
-				InputKeyPressed := ReadKey;
-
-				VideoWriteText(28, 24, $00, '                        ');
-				GotoXY(1, 23);
-			end;
-		end;
 	end;
 
 begin

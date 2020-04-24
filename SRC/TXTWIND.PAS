@@ -41,7 +41,7 @@ interface
 			Hyperlink: string[20];
 			Title: TTextWindowLine;
 			LoadedFilename: string[50];
-			ScreenCopy: array[1 .. 25] of string[160];
+			ScreenCopy: array[1 .. 25] of string[200];
 		end;
 		TResourceDataHeader = record
 			EntryCount: integer;
@@ -77,7 +77,7 @@ interface
 	procedure TextWindowInit(x, y, width, height: integer);
 
 implementation
-uses Crt, Input, Printer;
+uses Input, PC98;
 
 function UpCaseString(input: string): string;
 	var
@@ -232,7 +232,8 @@ procedure TextWindowPrint(var state: TTextWindowState);
 		iLine, iChar: integer;
 		line: string;
 	begin
-		with state do begin
+		{ TODO }
+		{ with state do begin
 			Rewrite(Lst);
 			for iLine := 1 to LineCount do begin
 				line := Lines[iLine]^;
@@ -263,9 +264,9 @@ procedure TextWindowPrint(var state: TTextWindowState);
 			if LoadedFilename = 'ORDER.HLP' then begin
 				WriteLn(Lst, OrderPrintId^);
 			end;
-			Write(Lst, Chr(12) { form feed });
+			Write(Lst, Chr(12));
 			Close(Lst);
-		end;
+		end; }
 	end;
 
 procedure TextWindowSelect(var state: TTextWindowState; hyperlinkAsSelect, viewingFile: boolean);

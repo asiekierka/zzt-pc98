@@ -41,13 +41,15 @@ interface
 		SoundBuffer: string;
 		SoundNewVector: pointer;
 		SoundOldVector: pointer;
+		SoundOldVector07: pointer;
 		SoundBufferPos: integer;
 		SoundIsPlaying: boolean;
-		SoundTimeCheckCounter: integer;
-		UseSystemTimeForElapsed: boolean;
 		TimerTicks: word;
-		SoundTimeCheckHsec: integer;
+		TimerSubTicks: word;
 		SoundDrumTable: array[0 .. 9] of TDrumData;
+		SoundFreqDivisor: longint;
+	procedure Sound(hz: word);
+	procedure NoSound;
 	procedure SoundQueue(priority: integer; pattern: string);
 	procedure SoundClearQueue;
 	function SoundHasTimeElapsed(var counter: integer; duration: integer): boolean;
@@ -55,7 +57,29 @@ interface
 	function SoundParse(input: string): string;
 
 implementation
-uses Crt, Dos;
+uses Dos, PC98;
+
+procedure Sound(hz: word);
+	var
+		convHz: word;
+	begin
+		Port[$35] := Port[$35] or $08;
+		Port[$37] := $09;
+
+		convHz := SoundFreqDivisor div hz;
+		Port[$77] := $76;
+		Port[$73] := convHz and $FF;
+		Port[$73] := convHz shr 8;
+
+		Port[$37] := $08;
+		Port[$35] := Port[$35] and $F7;
+	end;
+
+procedure NoSound;
+	begin
+		Port[$35] := Port[$35] or $08;
+		Port[$37] := $09;
+	end;
 
 procedure SoundQueue(priority: integer; pattern: string);
 	begin
@@ -141,37 +165,14 @@ procedure SoundPlayDrum(var drum: TDrumData);
 		NoSound;
 	end;
 
-procedure SoundCheckTimeIntr;
-	var
-		hour, minute, sec, hSec: word;
-	begin
-		GetTime(hour, minute, sec, hSec);
-		if (SoundTimeCheckHsec <> 0) and (Integer(hSec) <> SoundTimeCheckHsec) then begin
-			SoundTimeCheckCounter := 0;
-			UseSystemTimeForElapsed := true;
-		end;
-		SoundTimeCheckHsec := Integer(hSec);
-	end;
-
 function SoundHasTimeElapsed(var counter: integer; duration: integer): boolean;
 	var
 		hour, minute, sec, hSec: word;
 		hSecsDiff: word;
 		hSecsTotal: integer;
 	begin
-		if (SoundTimeCheckCounter > 0) and ((SoundTimeCheckCounter mod 2) = 1) then begin
-			SoundTimeCheckCounter := SoundTimeCheckCounter - 1;
-			SoundCheckTimeIntr;
-		end;
-
-		if UseSystemTimeForElapsed then begin
-			GetTime(hour, minute, sec, hSec);
-			hSecsTotal := sec * 100 + hSec;
-			hSecsDiff := Word((hSecsTotal - counter) + 6000) mod 6000;
-		end else begin
-			hSecsTotal := TimerTicks * 6;
-			hSecsDiff := hSecsTotal - counter;
-		end;
+		hSecsTotal := Word((LongInt(TimerTicks) * 93) shr 4);
+		hSecsDiff := hSecsTotal - counter;
 
 		if hSecsDiff >= duration then begin
 			SoundHasTimeElapsed := true;
@@ -183,11 +184,23 @@ function SoundHasTimeElapsed(var counter: integer; duration: integer): boolean;
 
 procedure SoundTimerHandler;
 	interrupt;
+	var
+		regs: Registers;
 	begin
-		Inc(TimerTicks);
-		if (SoundTimeCheckCounter > 0) and ((SoundTimeCheckCounter mod 2) = 0) then begin
-			SoundTimeCheckCounter := SoundTimeCheckCounter - 1;
+		Intr($07, regs);
+		if (Mem[0:$0501] and $80) = 0 then begin
+			Port[$71] := $D1;
+			Port[$71] := $83;
+		end else begin
+			Port[$71] := $1A;
+			Port[$71] := $6B;
 		end;
+
+		Inc(TimerSubTicks);
+		if (TimerSubTicks and 3) <> 0 then
+			Exit;
+
+		Inc(TimerTicks);
 
 		if not SoundEnabled then begin
 			SoundIsPlaying := false;
@@ -205,7 +218,8 @@ procedure SoundTimerHandler;
 					else if SoundBuffer[SoundBufferPos] < #240 then
 						Sound(SoundFreqTable[Ord(SoundBuffer[SoundBufferPos])])
 					else
-						SoundPlayDrum(SoundDrumTable[Ord(SoundBuffer[SoundBufferPos]) - 240]);
+						SoundPlayDrum(SoundDrumTable[Ord(SoundBuffer[SoundBufferPos]) - 240]); 
+
 					Inc(SoundBufferPos);
 
 					SoundDurationCounter := SoundDurationMultiplier * Ord(SoundBuffer[SoundBufferPos]);
@@ -217,7 +231,8 @@ procedure SoundTimerHandler;
 
 procedure SoundUninstall;
 	begin
-		SetIntVec($1C, SoundOldVector);
+		SetIntVec($08, SoundOldVector);
+		SetIntVec($07, SoundOldVector07);
 	end;
 
 function SoundParse(input: string): string;
@@ -341,17 +356,32 @@ function SoundParse(input: string): string;
 begin
 	SoundInitFreqTable;
 	SoundInitDrumTable;
-	SoundTimeCheckCounter := 36;
-	UseSystemTimeForElapsed := false;
 	TimerTicks := 0;
-	SoundTimeCheckHsec := 0;
 	SoundEnabled := true;
 	SoundBlockQueueing := false;
 	SoundClearQueue;
 	SoundDurationMultiplier := 1;
 	SoundIsPlaying := false;
 	TimerTicks := 0;
+
 	SoundNewVector := @SoundTimerHandler;
-	GetIntVec($1C, SoundOldVector);
-	SetIntVec($1C, SoundNewVector);
+	GetIntVec($08, SoundOldVector);
+	GetIntVec($07, SoundOldVector07);
+	SetIntVec($08, SoundNewVector);
+	SetIntVec($07, SoundOldVector);
+
+	{ configure timing }
+	inline($FA); { CLI }
+	Port[$77] := $36;
+	if (Mem[0:$0501] and $80) = 0 then begin
+		Port[$71] := $D1;
+		Port[$71] := $83;
+		SoundFreqDivisor := 2457600;
+	end else begin
+		Port[$71] := $1A;
+		Port[$71] := $6B;
+		SoundFreqDivisor := 1996800; 
+	end;
+	Port[$02] := (Port[$02] and $FE);
+	inline($FB); { STI }
 end.
