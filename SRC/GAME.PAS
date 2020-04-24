@@ -379,7 +379,7 @@ procedure BoardDrawTile(x, y: integer);
 					if Element = E_TEXT_WHITE then
 						VideoWriteText(x - 1, y - 1, $0F, Chr(Board.Tiles[x][y].Color))
 					else if VideoEightColor then
-						VideoWriteText(x - 1, y - 1, ((Element - E_TEXT_MIN) + 1) * $16, Chr(Board.Tiles[x][y].Color))
+						VideoWriteText(x - 1, y - 1, ((Element - E_TEXT_MIN) + 1) * 16, Chr(Board.Tiles[x][y].Color))
 					else
 						VideoWriteText(x - 1, y - 1, (((Element - E_TEXT_MIN) + 1) * 16) + $F, Chr(Board.Tiles[x][y].Color));
 				end
