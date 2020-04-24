@@ -56,16 +56,18 @@ interface
 
 implementation
 uses Dos, PC98;
+var
+	SpeakerActive: boolean;
 
 procedure Sound(hz: word);
 	var
 		convHz: word;
 	begin
-		Port[$35] := Port[$35] or $08;
-		Port[$37] := $09;
-
 		convHz := SoundFreqDivisor div hz;
-		Port[$77] := $76;
+		if not SpeakerActive then begin
+			Port[$77] := $76;
+			SpeakerActive := true;
+		end;
 		Port[$73] := convHz and $FF;
 		Port[$73] := convHz shr 8;
 
@@ -77,6 +79,7 @@ procedure NoSound;
 	begin
 		Port[$35] := Port[$35] or $08;
 		Port[$37] := $09;
+		SpeakerActive := false;
 	end;
 
 {$I SNDFREQ.INC}
@@ -337,4 +340,6 @@ begin
 	end;
 	Port[$02] := (Port[$02] and $FE);
 	inline($FB); { STI }
+
+	NoSound;
 end.
