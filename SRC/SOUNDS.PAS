@@ -29,13 +29,12 @@ interface
 	type
 		TDrumData = record
 			Len: integer;
-			Data: array[1 .. 255] of word;
+			Data: array[1 .. 15] of word;
 		end;
 	var
 		SoundEnabled: boolean;
 		SoundBlockQueueing: boolean;
 		SoundCurrentPriority: integer;
-		SoundFreqTable: array[1 .. 255] of word;
 		SoundDurationMultiplier: byte;
 		SoundDurationCounter: byte;
 		SoundBuffer: string;
@@ -46,7 +45,6 @@ interface
 		SoundIsPlaying: boolean;
 		TimerTicks: word;
 		TimerSubTicks: word;
-		SoundDrumTable: array[0 .. 9] of TDrumData;
 		SoundFreqDivisor: longint;
 	procedure Sound(hz: word);
 	procedure NoSound;
@@ -81,6 +79,8 @@ procedure NoSound;
 		Port[$37] := $09;
 	end;
 
+{$I SNDFREQ.INC}
+
 procedure SoundQueue(priority: integer; pattern: string);
 	begin
 		if not SoundBlockQueueing and
@@ -107,51 +107,6 @@ procedure SoundClearQueue;
 		SoundBuffer := '';
 		SoundIsPlaying := false;
 		NoSound;
-	end;
-
-procedure SoundInitFreqTable;
-	var
-		octave, note: integer;
-		freqC1, noteStep, noteBase, ln2: real;
-	begin
-		freqC1 := 32.0;
-		ln2 := Ln(2.0);
-		noteStep := Exp(ln2 / 12.0);
-		for octave := 1 to 15 do begin
-			noteBase := Exp(octave * ln2) * freqC1;
-			for note := 0 to 11 do begin
-				SoundFreqTable[octave * 16 + note] := Trunc(noteBase);
-				noteBase := noteBase * noteStep;
-			end;
-		end;
-	end;
-
-procedure SoundInitDrumTable;
-	var
-		i: integer;
-	begin
-		SoundDrumTable[0].Len := 1;
-		SoundDrumTable[0].Data[1] := 3200;
-		for i := 1 to 9 do
-			SoundDrumTable[i].Len := 14;
-		for i := 1 to 14 do
-			SoundDrumTable[1].Data[i] := i * 100 + 1000;
-		for i := 1 to 16 do
-			SoundDrumTable[2].Data[i] := (i mod 2) * 1600 + 1600 + (i mod 4) * 1600;
-		for i := 1 to 14 do
-			SoundDrumTable[4].Data[i] := Random(5000) + 500;
-		for i := 1 to 8 do begin
-			SoundDrumTable[5].Data[i * 2 - 1] := 1600;
-			SoundDrumTable[5].Data[i * 2] := Random(1600) + 800;
-		end;
-		for i := 1 to 14 do
-			SoundDrumTable[6].Data[i] := ((i mod 2) * 880) + 880 + ((i mod 3) * 440);
-		for i := 1 to 14 do
-			SoundDrumTable[7].Data[i] := 700 - (i * 12);
-		for i := 1 to 14 do
-			SoundDrumTable[8].Data[i] := (i * 20 + 1200) - Random(i * 40);
-		for i := 1 to 14 do
-			SoundDrumTable[9].Data[i] := Random(440) + 220;
 	end;
 
 procedure SoundPlayDrum(var drum: TDrumData);
@@ -213,12 +168,12 @@ procedure SoundTimerHandler;
 					NoSound;
 					SoundIsPlaying := false;
 				end else begin
-					if SoundBuffer[SoundBufferPos] = #0 then
-						NoSound
-					else if SoundBuffer[SoundBufferPos] < #240 then
+					if (SoundBuffer[SoundBufferPos] >= #16) and (SoundBuffer[SoundBufferPos] < #112) then
 						Sound(SoundFreqTable[Ord(SoundBuffer[SoundBufferPos])])
+					else if (SoundBuffer[SoundBufferPos] >= #240) and (SoundBuffer[SoundBufferPos] < #250) then
+						SoundPlayDrum(SoundDrumTable[Ord(SoundBuffer[SoundBufferPos]) - 240])
 					else
-						SoundPlayDrum(SoundDrumTable[Ord(SoundBuffer[SoundBufferPos]) - 240]); 
+						NoSound;
 
 					Inc(SoundBufferPos);
 
@@ -354,8 +309,6 @@ function SoundParse(input: string): string;
 	end;
 
 begin
-	SoundInitFreqTable;
-	SoundInitDrumTable;
 	TimerTicks := 0;
 	SoundEnabled := true;
 	SoundBlockQueueing := false;
