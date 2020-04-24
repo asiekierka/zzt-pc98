@@ -31,7 +31,7 @@ interface
 		TVideoLine = string[80];
 		TVideoWriteTextProc = procedure(x, y, color: byte; text: TVideoLine);
 	var
-		VideoMonochrome: boolean;
+		VideoEightColor: boolean;
 		VideoColumns: integer;
 		VideoBorderColor: integer;
 		VideoCursorVisible: boolean;
@@ -140,6 +140,6 @@ procedure ClrScr;
 begin
 	VideoBorderColor := 0;
 	VideoColumns := 80;
-	VideoMonochrome := false;
 	VideoCursorVisible := true;
+	VideoEightColor := true;
 end.
