@@ -153,7 +153,6 @@ interface
 		unkVar_0476: integer;
 		unkVar_0478: integer;
 
-		TransitionTable: array[1 .. 80*25] of TCoord;
 		LoadedGameFileName: TString50;
 		SavedGameFileName: TString50;
 		SavedBoardFileName: TString50;
@@ -178,7 +177,6 @@ interface
 		GameStateElement: integer;
 		ReturnBoardId: integer;
 
-		TransitionTableSize: integer;
 		TickSpeed: byte;
 
 		IoTmpBuf: ^TIoTmpBuf;

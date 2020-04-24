@@ -35,7 +35,6 @@ interface
 		PROMPT_ANY = 2;
 	procedure SidebarClearLine(y: integer);
 	procedure SidebarClear;
-	procedure GenerateTransitionTable;
 	procedure AdvancePointer(var address: pointer; count: integer);
 	procedure BoardClose;
 	procedure BoardOpen(boardId: integer);
@@ -85,6 +84,7 @@ interface
 	procedure GameDebugPrompt;
 	procedure GameTitleLoop;
 const
+	LFSR11_START = 42;
 	ProgressAnimColors: array[0 .. 7] of byte = ($14, $1C, $15, $1D, $16, $1E, $17, $1F);
 	ProgressAnimStrings: array[0 .. 7] of string[5] =
 		('....|', '...*/', '..*.-', '.*..\', '*...|', '..../', '....-', '....\');
@@ -108,6 +108,14 @@ const
 implementation
 uses Dos, PC98, Video, Sounds, Input, Elements, Editor, Oop;
 
+function LFSR11UpdateSeed(var seed: word; var tx, ty: byte): boolean;
+	begin
+		seed := (seed shr 1) xor ((-(seed and 1)) and $740);
+		tx := (seed - 1) and $3F;
+		ty := ((seed - 1) shr 6) and $3F;
+		LFSR11UpdateSeed := seed = LFSR11_START;
+	end;
+
 procedure SidebarClearLine(y: integer);
 	begin
 		VideoWriteText(60, y, $11, #179'                   ');
@@ -119,28 +127,6 @@ procedure SidebarClear;
 	begin
 		for i := 3 to 24 do
 			SidebarClearLine(i);
-	end;
-
-procedure GenerateTransitionTable;
-	var
-		ix, iy: integer;
-		t: TCoord;
-	begin
-		TransitionTableSize := 0;
-		for iy := 1 to BOARD_HEIGHT do
-			for ix := 1 to BOARD_WIDTH do begin
-				TransitionTableSize := TransitionTableSize + 1;
-				TransitionTable[TransitionTableSize].X := ix;
-				TransitionTable[TransitionTableSize].Y := iy;
-			end;
-
-		{ shuffle }
-		for ix := 1 to TransitionTableSize do begin
-			iy := Random(TransitionTableSize) + 1;
-			t := TransitionTable[iy];
-			TransitionTable[iy] := TransitionTable[ix];
-			TransitionTable[ix] := t;
-		end;
 	end;
 
 procedure AdvancePointer(var address: pointer; count: integer);
@@ -356,10 +342,17 @@ procedure WorldCreate;
 
 procedure TransitionDrawToFill(chr: char; color: integer);
 	var
-		i: integer;
+		seed: word;
+		tx, ty: byte;
 	begin
-		for i := 1 to TransitionTableSize do
-			VideoWriteText(TransitionTable[i].X - 1, TransitionTable[i].Y - 1, color, chr);
+		seed := LFSR11_START;
+		repeat
+			if (tx < 60) and (ty < 25) then
+				VideoWriteText(tx, ty, color, chr);
+		until LFSR11UpdateSeed(seed, tx, ty);
+
+		if (tx < 60) and (ty < 25) then
+			VideoWriteText(tx, ty, color, chr);
 	end;
 
 procedure BoardDrawTile(x, y: integer);
@@ -414,13 +407,20 @@ procedure BoardDrawBorder;
 
 procedure TransitionDrawToBoard;
 	var
-		i: integer;
+		seed: word;
+		tx, ty: byte;
 	begin
 		BoardDrawBorder;
 
-		for i := 1 to TransitionTableSize do
-			with TransitionTable[i] do
-				BoardDrawTile(X, Y);
+		seed := LFSR11_START;
+		repeat
+			if (tx < 60) and (ty < 25) then
+				BoardDrawTile(tx+1, ty+1);
+		until LFSR11UpdateSeed(seed, tx, ty);
+
+
+		if (tx < 60) and (ty < 25) then
+			BoardDrawTile(tx+1, ty+1);
 	end;
 
 procedure SidebarPromptCharacter(editable: boolean; x, y: integer; prompt: TString50; var value: byte);

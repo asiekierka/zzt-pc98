@@ -163,7 +163,6 @@ begin
 		DebugEnabled := false;
 		SavedGameFileName := 'SAVED';
 		SavedBoardFileName := 'TEMP';
-		GenerateTransitionTable;
 		WorldCreate;
 
 		GameTitleLoop;
