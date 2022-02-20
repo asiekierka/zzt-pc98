@@ -1,4 +1,11 @@
-# The Reconstruction of ZZT
+# THIS PORT IS OUTDATED
+
+I have since developed a much more polished and capable port of ZZT to the PC-9801, as part of the ClassicZoo project. **Please try that one instead.**
+
+* [Learn more/Downloads](https://zeta.asie.pl/wiki/doku.php?id=release:classiczoo)
+* [Source code](https://github.com/OpenZoo/ClassicZoo/)
+
+# Original Readme (The Reconstruction of ZZT)
 
 The Reconstruction of ZZT is a reverse-engineered recreation of the source code to the last official release of
 [ZZT](https://museumofzzt.com/about-zzt), ZZT 3.2. The output executable is byte-for-byte identical with said
